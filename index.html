@@ -84,16 +84,15 @@
     if (typeof voters !== 'undefined' && Array.isArray(voters)) {
       document.getElementById('statusCount').innerText = `कुल ${voters.length} वोटर्स तैयार हैं।`;
     } else {
-      document.getElementById('statusCount').innerText = "⚠️ data.js नहीं मिला या लोड नहीं हुआ!";
+      document.getElementById('statusCount').innerText = "⚠️ data.js फाइल लोड नहीं हुई!";
     }
   };
 
-  // Card detail expand / collapse toggle
+  // Card Drawer Toggle
   function toggleDetails(uid) {
     const el = document.getElementById('details-' + uid);
     const arrow = document.getElementById('arrow-' + uid);
     if (!el) return;
-
     if (el.style.display === 'block') {
       el.style.display = 'none';
       if (arrow) arrow.innerText = '▼ विवरण देखें';
@@ -103,7 +102,7 @@
     }
   }
 
-  // Checkbox selection handler
+  // Multi-Select Checkbox Handler
   function handleSelect(uid, event) {
     event.stopPropagation();
     const cb = event.target;
@@ -121,59 +120,130 @@
     if (selectedVoters.size > 0) {
       btn.style.display = 'block';
       btn.innerText = `🖨️ चयनित (${selectedVoters.size}) पर्चियां एक साथ प्रिंट करें`;
-      badge.innerText = `चयनित: ${selectedVoters.size}`;
+      if (badge) badge.innerText = `चयनित: ${selectedVoters.size}`;
     } else {
       btn.style.display = 'none';
-      badge.innerText = '';
+      if (badge) badge.innerText = '';
     }
   }
 
-  // 58mm (32 Column Exact Fit) Slip Template for Niyama BT-58
-  function makeSlipText(v) {
-    const line = "--------------------------------\n";
-    const title = "    वार्ड 24 - मतदाता पर्ची     \n";
-    return (
-      line +
-      title +
-      line +
-      "भाग सं.   : " + (v["Part_Number"] || "") + "\n" +
-      "क्रमांक    : " + (v["Sr. No."] || "") + "\n" +
-      "नाम       : " + (v["Name_hi"] || v["Name_en"] || "") + "\n" +
-      (v["Relation_Type_hi"] || "सम्बन्ध") + " : " + (v["Relative_Name_hi"] || v["Relative_Name_en"] || "") + "\n" +
-      "मकान नं.  : " + (v["House_hi"] || "") + "\n" +
-      "आयु/लिंग  : " + (v["Age"] || "") + " वर्ष / " + (v["Gender_hi"] || "") + "\n" +
-      "EPIC नं.  : " + (v["EPIC No."] || "") + "\n" +
-      "बूथ       : " + (v["Polling_Booth_hi"] || "") + "\n" +
-      line +
-      "    मतदान अवश्य करें!\n\n\n"
-    );
+  // ==========================================
+  // HINDI IMAGE GENERATOR (58mm Exact 384px)
+  // ==========================================
+  function createSlipCanvas(voterList) {
+    const singleHeight = 490;
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+
+    // 58mm printer width = 384 pixels
+    canvas.width = 384;
+    canvas.height = singleHeight * voterList.length;
+
+    // Pure White Background
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    voterList.forEach((v, index) => {
+      const startY = index * singleHeight;
+
+      ctx.fillStyle = '#000000';
+      ctx.textAlign = 'center';
+
+      // Header Title
+      ctx.font = 'bold 22px sans-serif';
+      ctx.fillText('वार्ड 24 - मतदाता पर्ची', 192, startY + 38);
+
+      // Dashed separator line
+      ctx.beginPath();
+      ctx.setLineDash([6, 4]);
+      ctx.moveTo(12, startY + 52);
+      ctx.lineTo(372, startY + 52);
+      ctx.stroke();
+
+      // Left Aligned Voter Details
+      ctx.textAlign = 'left';
+      ctx.setLineDash([]);
+
+      ctx.font = 'bold 19px sans-serif';
+      ctx.fillText(`भाग सं.   : ${v["Part_Number"] || ''}`, 16, startY + 84);
+      ctx.fillText(`क्रमांक    : ${v["Sr. No."] || ''}`, 16, startY + 116);
+
+      // Voter Name Hindi (Bold & Big)
+      ctx.font = 'bold 22px sans-serif';
+      ctx.fillText(`${v["Name_hi"] || ''}`, 16, startY + 152);
+
+      // Voter Name English
+      ctx.font = '15px sans-serif';
+      ctx.fillText(`(${v["Name_en"] || ''})`, 16, startY + 176);
+
+      // Relative Info
+      ctx.font = '17px sans-serif';
+      ctx.fillText(`${v["Relation_Type_hi"] || 'सम्बन्ध'}: ${v["Relative_Name_hi"] || ''}`, 16, startY + 210);
+
+      // House & Age/Gender
+      ctx.fillText(`मकान नं. : ${v["House_hi"] || '-'}`, 16, startY + 242);
+      ctx.fillText(`आयु/लिंग : ${v["Age"] || '-'} वर्ष / ${v["Gender_hi"] || '-'}`, 16, startY + 274);
+
+      // EPIC / Voter ID
+      ctx.font = 'bold 18px sans-serif';
+      ctx.fillText(`EPIC नं. : ${v["EPIC No."] || '-'}`, 16, startY + 308);
+
+      // Booth Address (Word wrapping if long)
+      ctx.font = '14px sans-serif';
+      const booth = v["Polling_Booth_hi"] || '-';
+      ctx.fillText(`बूथ: ${booth.substring(0, 30)}`, 16, startY + 342);
+      if (booth.length > 30) {
+        ctx.fillText(`${booth.substring(30, 65)}`, 16, startY + 364);
+      }
+
+      // Footer Divider
+      ctx.beginPath();
+      ctx.setLineDash([6, 4]);
+      ctx.moveTo(12, startY + 398);
+      ctx.lineTo(372, startY + 398);
+      ctx.stroke();
+
+      // Footer Message
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 17px sans-serif';
+      ctx.fillText('मतदान अवश्य करें!', 192, startY + 428);
+
+      // Extra bottom margin line for multi-print cutting
+      if (voterList.length > 1 && index < voterList.length - 1) {
+        ctx.beginPath();
+        ctx.setLineDash([2, 2]);
+        ctx.moveTo(0, startY + singleHeight - 2);
+        ctx.lineTo(384, startY + singleHeight - 2);
+        ctx.stroke();
+      }
+    });
+
+    return canvas.toDataURL('image/png');
   }
 
-  // Dispatch text to RawBT on Android or Browser Print on Laptop
-  function executePrint(plainText) {
+  // Direct Image Delivery to RawBT App
+  function sendImageToPrinter(base64DataUrl) {
     const isAndroid = /android/i.test(navigator.userAgent);
 
     if (isAndroid) {
-      const intentUri = "intent:data:text/plain;charset=utf-8," + encodeURIComponent(plainText) + 
-                        "#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;";
-      window.location.href = intentUri;
+      // RawBT intent strictly set to image/png
+      const intentUrl = "intent:" + base64DataUrl + "#Intent;scheme=rawbt;type=image/png;package=ru.a402d.rawbtprinter;end;";
+      window.location.href = intentUrl;
     } else {
-      const printWin = window.open('', '', 'width=380,height=600');
-      printWin.document.write('<pre style="font-family:monospace; font-size:13px; white-space:pre-wrap; width:300px;">' + plainText + '</pre>');
-      printWin.document.close();
-      printWin.focus();
-      printWin.print();
-      printWin.close();
+      // Laptop window preview test
+      const win = window.open('');
+      win.document.write(`<body style="margin:0; background:#eee; display:flex; justify-content:center; padding:20px;">
+        <img src="${base64DataUrl}" style="box-shadow:0 0 10px rgba(0,0,0,0.3); background:#fff;" />
+      </body>`);
     }
   }
 
-  // Smart Print Button Action (Single OR Selected Multiple)
+  // 1. Single Print Button
   function handleSmartPrint(uid, event) {
     event.stopPropagation();
 
-    // Agar user ne checkboxes select kiye hue hain
+    // Agar user ne checkboxes mark kiye hue hain
     if (selectedVoters.size > 0) {
-      // Current card agar select nahi hai toh use bhi batch me add kar lo
       if (!selectedVoters.has(uid)) {
         selectedVoters.add(uid);
         const cb = document.querySelector(`#card-${uid} input[type="checkbox"]`);
@@ -182,29 +252,28 @@
       }
       printSelectedBatch();
     } else {
-      // Agar koi checkbox nahi laga, toh normal single voter print nikalo
       const v = voters.find(item => `${item["Part_Number"]}_${item["Sr. No."]}` === uid);
       if (!v) return alert("वोटर नहीं मिला!");
-      executePrint(makeSlipText(v));
+      const imgData = createSlipCanvas([v]);
+      sendImageToPrinter(imgData);
     }
   }
 
-  // Print all marked slips together
+  // 2. Family / Multiple Selected Batch Print
   function printSelectedBatch() {
     if (selectedVoters.size === 0) return;
 
-    let combined = "";
+    const listToPrint = [];
     selectedVoters.forEach(uid => {
       const v = voters.find(item => `${item["Part_Number"]}_${item["Sr. No."]}` === uid);
-      if (v) {
-        combined += makeSlipText(v);
-      }
+      if (v) listToPrint.push(v);
     });
 
-    executePrint(combined);
+    const imgData = createSlipCanvas(listToPrint);
+    sendImageToPrinter(imgData);
   }
 
-  // Search Logic
+  // Search Logic with All Filters
   function runSearch() {
     const query = document.getElementById('searchBar').value.toLowerCase().trim();
     const selectedPart = document.getElementById('partFilter').value;
@@ -219,9 +288,7 @@
     }
 
     const results = voters.filter(v => {
-      if (selectedPart !== 'ALL' && String(v["Part_Number"]) !== selectedPart) {
-        return false;
-      }
+      if (selectedPart !== 'ALL' && String(v["Part_Number"]) !== selectedPart) return false;
       if (!query) return true;
 
       if (searchType === 'REL') {
@@ -276,8 +343,7 @@
               ${v["Name_hi"]} <span style="font-size:13px; font-weight:normal; color:#666;">(${v["Name_en"] || ''})</span>
             </div>
             <div style="font-size:14px; color:#333; margin-top:2px;">
-              👤 ${v["Relation_Type_hi"] || 'पिता/पति'}: <b>${v["Relative_Name_hi"]}</b> 
-              <span style="font-size:12px; color:#666;">(${v["Relative_Name_en"] || ''})</span>
+              👤 ${v["Relation_Type_hi"] || 'पिता/पति'}: <b>${v["Relative_Name_hi"]}</b>
             </div>
             <div style="display:flex; gap:6px; margin-top:5px; font-size:12px; font-weight:bold;">
               <span style="background:#e0f2fe; color:#0369a1; padding:2px 6px; border-radius:4px;">भाग: ${v["Part_Number"]}</span>
@@ -287,7 +353,7 @@
             </div>
           </div>
 
-          <!-- Smart Print Button -->
+          <!-- Print Button -->
           <div>
             <button 
               type="button" 
