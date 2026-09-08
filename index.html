@@ -74,6 +74,12 @@
     style="display:none; width:100%; background:#28a745; color:white; border:none; padding:12px; font-size:15px; font-weight:bold; border-radius:8px; margin-top:8px; cursor:pointer;">
     🖨️ चयनित पर्चियां एक साथ प्रिंट करें
   </button>
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px; font-size:13px; font-weight:bold;">
+  <span id="statusCount">डाटा लोड हो रहा है...</span>
+  <button id="clearSelBtn" type="button" onclick="clearAllSelections()" style="display:none; background:#ef4444; color:white; border:none; padding:4px 8px; border-radius:6px; font-size:12px; cursor:pointer;">
+    ❌ सब अन-सेलेक्ट करें
+  </button>
+</div>
 </div>
 
 <div id="resultContainer"></div>
@@ -84,7 +90,7 @@
     if (typeof voters !== 'undefined' && Array.isArray(voters)) {
       document.getElementById('statusCount').innerText = `कुल ${voters.length} वोटर्स तैयार हैं।`;
     } else {
-      document.getElementById('statusCount').innerText = "⚠️ data.js फाइल लोड नहीं हुई!";
+      document.getElementById('statusCount').innerText = "⚠️ data.js फाइल नहीं मिली!";
     }
   };
 
@@ -102,7 +108,7 @@
     }
   }
 
-  // Multi-Select Checkbox Handler
+  // Checkbox Selection Logic
   function handleSelect(uid, event) {
     event.stopPropagation();
     const cb = event.target;
@@ -114,106 +120,114 @@
     updateBulkUI();
   }
 
+  // Pure Selections ko Reset karna (Bug Fix)
+  function clearAllSelections() {
+    selectedVoters.clear();
+    document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+    updateBulkUI();
+  }
+
   function updateBulkUI() {
-    const btn = document.getElementById('bulkPrintBtn');
-    const badge = document.getElementById('selectedCountBadge');
+    const bulkBtn = document.getElementById('bulkPrintBtn');
+    const clearBtn = document.getElementById('clearSelBtn');
+    
     if (selectedVoters.size > 0) {
-      btn.style.display = 'block';
-      btn.innerText = `🖨️ चयनित (${selectedVoters.size}) पर्चियां एक साथ प्रिंट करें`;
-      if (badge) badge.innerText = `चयनित: ${selectedVoters.size}`;
+      if (bulkBtn) {
+        bulkBtn.style.display = 'block';
+        bulkBtn.innerText = `🖨️ चयनित (${selectedVoters.size}) पर्चियां प्रिंट करें`;
+      }
+      if (clearBtn) clearBtn.style.display = 'inline-block';
     } else {
-      btn.style.display = 'none';
-      if (badge) badge.innerText = '';
+      if (bulkBtn) bulkBtn.style.display = 'none';
+      if (clearBtn) clearBtn.style.display = 'none';
     }
   }
 
-  // ==========================================
-  // HINDI IMAGE GENERATOR (58mm Exact 384px)
-  // ==========================================
-  function createSlipCanvas(voterList) {
-    const singleHeight = 490;
+  // =================================================================
+  // 58mm HIGH-DEFINITION CANVAS BITMAP ENGINE (PDF & LAPTOP QUALITY)
+  // =================================================================
+  function renderSlipToCanvas(voterList) {
+    const slipHeight = 500;
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
 
-    // 58mm printer width = 384 pixels
+    // 58mm standard width = 384 pixels
     canvas.width = 384;
-    canvas.height = singleHeight * voterList.length;
+    canvas.height = slipHeight * voterList.length;
 
-    // Pure White Background
+    // Pure crisp white background
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     voterList.forEach((v, index) => {
-      const startY = index * singleHeight;
+      const top = index * slipHeight;
 
       ctx.fillStyle = '#000000';
       ctx.textAlign = 'center';
 
-      // Header Title
+      // Header
       ctx.font = 'bold 22px sans-serif';
-      ctx.fillText('वार्ड 24 - मतदाता पर्ची', 192, startY + 38);
+      ctx.fillText('वार्ड 24 - मतदाता पर्ची', 192, top + 36);
 
-      // Dashed separator line
+      // Top divider
       ctx.beginPath();
       ctx.setLineDash([6, 4]);
-      ctx.moveTo(12, startY + 52);
-      ctx.lineTo(372, startY + 52);
+      ctx.moveTo(12, top + 50);
+      ctx.lineTo(372, top + 50);
       ctx.stroke();
 
-      // Left Aligned Voter Details
+      // Left aligned text
       ctx.textAlign = 'left';
       ctx.setLineDash([]);
 
-      ctx.font = 'bold 19px sans-serif';
-      ctx.fillText(`भाग सं.   : ${v["Part_Number"] || ''}`, 16, startY + 84);
-      ctx.fillText(`क्रमांक    : ${v["Sr. No."] || ''}`, 16, startY + 116);
+      ctx.font = 'bold 18px sans-serif';
+      ctx.fillText(`भाग सं.   : ${v["Part_Number"] || ''}`, 16, top + 80);
+      ctx.fillText(`क्रमांक    : ${v["Sr. No."] || ''}`, 16, top + 110);
 
-      // Voter Name Hindi (Bold & Big)
+      // Voter Name Hindi (Bold)
       ctx.font = 'bold 22px sans-serif';
-      ctx.fillText(`${v["Name_hi"] || ''}`, 16, startY + 152);
+      ctx.fillText(`${v["Name_hi"] || ''}`, 16, top + 144);
 
       // Voter Name English
       ctx.font = '15px sans-serif';
-      ctx.fillText(`(${v["Name_en"] || ''})`, 16, startY + 176);
+      ctx.fillText(`(${v["Name_en"] || ''})`, 16, top + 168);
 
-      // Relative Info
+      // Family & House details
       ctx.font = '17px sans-serif';
-      ctx.fillText(`${v["Relation_Type_hi"] || 'सम्बन्ध'}: ${v["Relative_Name_hi"] || ''}`, 16, startY + 210);
-
-      // House & Age/Gender
-      ctx.fillText(`मकान नं. : ${v["House_hi"] || '-'}`, 16, startY + 242);
-      ctx.fillText(`आयु/लिंग : ${v["Age"] || '-'} वर्ष / ${v["Gender_hi"] || '-'}`, 16, startY + 274);
+      ctx.fillText(`${v["Relation_Type_hi"] || 'सम्बन्ध'}: ${v["Relative_Name_hi"] || ''}`, 16, top + 202);
+      ctx.fillText(`मकान नं. : ${v["House_hi"] || '-'}`, 16, top + 232);
+      ctx.fillText(`आयु/लिंग : ${v["Age"] || '-'} वर्ष / ${v["Gender_hi"] || '-'}`, 16, top + 262);
 
       // EPIC / Voter ID
       ctx.font = 'bold 18px sans-serif';
-      ctx.fillText(`EPIC नं. : ${v["EPIC No."] || '-'}`, 16, startY + 308);
+      ctx.fillText(`EPIC नं. : ${v["EPIC No."] || '-'}`, 16, top + 296);
 
-      // Booth Address (Word wrapping if long)
+      // Booth Info (Word wrapping for 2 lines)
       ctx.font = '14px sans-serif';
       const booth = v["Polling_Booth_hi"] || '-';
-      ctx.fillText(`बूथ: ${booth.substring(0, 30)}`, 16, startY + 342);
-      if (booth.length > 30) {
-        ctx.fillText(`${booth.substring(30, 65)}`, 16, startY + 364);
+      ctx.fillText(`बूथ: ${booth.substring(0, 32)}`, 16, top + 330);
+      if (booth.length > 32) {
+        ctx.fillText(`${booth.substring(32, 68)}`, 16, top + 352);
       }
 
-      // Footer Divider
+      // Bottom separator
       ctx.beginPath();
       ctx.setLineDash([6, 4]);
-      ctx.moveTo(12, startY + 398);
-      ctx.lineTo(372, startY + 398);
+      ctx.moveTo(12, top + 386);
+      ctx.lineTo(372, top + 386);
       ctx.stroke();
 
-      // Footer Message
+      // Footer
       ctx.textAlign = 'center';
       ctx.font = 'bold 17px sans-serif';
-      ctx.fillText('मतदान अवश्य करें!', 192, startY + 428);
+      ctx.fillText('मतदान अवश्य करें!', 192, top + 416);
 
-      // Extra bottom margin line for multi-print cutting
+      // Separation cut line for batch items
       if (voterList.length > 1 && index < voterList.length - 1) {
         ctx.beginPath();
-        ctx.setLineDash([2, 2]);
-        ctx.moveTo(0, startY + singleHeight - 2);
-        ctx.lineTo(384, startY + singleHeight - 2);
+        ctx.setLineDash([3, 3]);
+        ctx.moveTo(0, top + slipHeight - 2);
+        ctx.lineTo(384, top + slipHeight - 2);
         ctx.stroke();
       }
     });
@@ -221,59 +235,68 @@
     return canvas.toDataURL('image/png');
   }
 
-  // Direct Image Delivery to RawBT App
-  function sendImageToPrinter(base64DataUrl) {
+  // =================================================================
+  // DIRECT PHONE INTENT ENGINE (NO TRUNCATION / NO CHINESE GARBAGE)
+  // =================================================================
+  function dispatchPrint(dataUrl) {
     const isAndroid = /android/i.test(navigator.userAgent);
 
     if (isAndroid) {
-      // RawBT intent strictly set to image/png
-      const intentUrl = "intent:" + base64DataUrl + "#Intent;scheme=rawbt;type=image/png;package=ru.a402d.rawbtprinter;end;";
-      window.location.href = intentUrl;
+      // Base64 PNG image stream direct to RawBT image parser
+      const cleanBase64 = dataUrl.replace(/^data:image\/png;base64,/, '');
+      const rawbtIntent = "intent:base64," + cleanBase64 + "#Intent;scheme=rawbt;type=image/png;package=ru.a402d.rawbtprinter;end;";
+      
+      window.location.href = rawbtIntent;
     } else {
-      // Laptop window preview test
+      // Laptop standard preview window
       const win = window.open('');
-      win.document.write(`<body style="margin:0; background:#eee; display:flex; justify-content:center; padding:20px;">
-        <img src="${base64DataUrl}" style="box-shadow:0 0 10px rgba(0,0,0,0.3); background:#fff;" />
-      </body>`);
+      win.document.write(`
+        <body style="margin:0; background:#f3f4f6; display:flex; justify-content:center; padding:20px;">
+          <img src="${dataUrl}" style="box-shadow:0 4px 12px rgba(0,0,0,0.15); background:#fff;" />
+        </body>
+      `);
     }
   }
 
-  // 1. Single Print Button
+  // Smart Print Button (Single or Multi Trigger)
   function handleSmartPrint(uid, event) {
     event.stopPropagation();
 
-    // Agar user ne checkboxes mark kiye hue hain
     if (selectedVoters.size > 0) {
+      // Agar list bani hui hai toh us list ko print karein
       if (!selectedVoters.has(uid)) {
         selectedVoters.add(uid);
-        const cb = document.querySelector(`#card-${uid} input[type="checkbox"]`);
-        if (cb) cb.checked = true;
-        updateBulkUI();
       }
       printSelectedBatch();
     } else {
+      // Sirf 1 voter print
       const v = voters.find(item => `${item["Part_Number"]}_${item["Sr. No."]}` === uid);
-      if (!v) return alert("वोटर नहीं मिला!");
-      const imgData = createSlipCanvas([v]);
-      sendImageToPrinter(imgData);
+      if (!v) return alert("वोटर रिकॉर्ड नहीं मिला!");
+      const slipImg = renderSlipToCanvas([v]);
+      dispatchPrint(slipImg);
     }
   }
 
-  // 2. Family / Multiple Selected Batch Print
+  // Multi-Print Execution & Auto-Deselect
   function printSelectedBatch() {
     if (selectedVoters.size === 0) return;
 
-    const listToPrint = [];
+    const printList = [];
     selectedVoters.forEach(uid => {
       const v = voters.find(item => `${item["Part_Number"]}_${item["Sr. No."]}` === uid);
-      if (v) listToPrint.push(v);
+      if (v) printList.push(v);
     });
 
-    const imgData = createSlipCanvas(listToPrint);
-    sendImageToPrinter(imgData);
+    const slipImg = renderSlipToCanvas(printList);
+    dispatchPrint(slipImg);
+
+    // Print command bhejte hi pichle marked voters ko automatically uncheck karna
+    setTimeout(() => {
+      clearAllSelections();
+    }, 800);
   }
 
-  // Search Logic with All Filters
+  // Comprehensive Search Handler
   function runSearch() {
     const query = document.getElementById('searchBar').value.toLowerCase().trim();
     const selectedPart = document.getElementById('partFilter').value;
@@ -329,7 +352,6 @@
 
       card.innerHTML = `
         <div style="display:flex; align-items:center; gap:10px; padding:12px;">
-          <!-- Multi Select Checkbox -->
           <input 
             type="checkbox" 
             style="width:22px; height:22px; accent-color:#007bff; cursor:pointer;" 
@@ -337,7 +359,6 @@
             onclick="handleSelect('${uid}', event)"
           >
 
-          <!-- Voter Overview -->
           <div onclick="toggleDetails('${uid}')" style="flex:1; cursor:pointer;">
             <div style="font-size:16px; font-weight:bold; color:#111;">
               ${v["Name_hi"]} <span style="font-size:13px; font-weight:normal; color:#666;">(${v["Name_en"] || ''})</span>
@@ -353,7 +374,6 @@
             </div>
           </div>
 
-          <!-- Print Button -->
           <div>
             <button 
               type="button" 
@@ -364,7 +384,6 @@
           </div>
         </div>
 
-        <!-- Hidden Detail Drawer -->
         <div id="details-${uid}" style="display:none; padding:12px; border-top:1px dashed #ddd; background:#fafafa; font-size:13px; line-height:1.6; color:#333;">
           <div><b>🆔 EPIC / वोटर ID:</b> <span style="color:#007bff; font-weight:bold;">${v["EPIC No."] || '-'}</span></div>
           <div><b>🏠 मकान सं:</b> ${v["House_hi"] || '-'} | <b>आयु:</b> ${v["Age"] || '-'} वर्ष | <b>लिंग:</b> ${v["Gender_hi"] || '-'}</div>
