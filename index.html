@@ -120,7 +120,7 @@
     updateBulkUI();
   }
 
-  // Pure Selections ko Reset karna (Bug Fix)
+  // Pure Selections ko Reset karna
   function clearAllSelections() {
     selectedVoters.clear();
     document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
@@ -144,14 +144,14 @@
   }
 
   // =================================================================
-  // 58mm HIGH-DEFINITION CANVAS BITMAP ENGINE (PDF & LAPTOP QUALITY)
+  // 58mm COMPACT CANVAS BITMAP (CRISP HINDI + FAST MOBILE LOAD)
   // =================================================================
   function renderSlipToCanvas(voterList) {
-    const slipHeight = 500;
+    const slipHeight = 460;
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
 
-    // 58mm standard width = 384 pixels
+    // 58mm width = 384 pixels
     canvas.width = 384;
     canvas.height = slipHeight * voterList.length;
 
@@ -167,13 +167,13 @@
 
       // Header
       ctx.font = 'bold 22px sans-serif';
-      ctx.fillText('वार्ड 24 - मतदाता पर्ची', 192, top + 36);
+      ctx.fillText('वार्ड 24 - मतदाता पर्ची', 192, top + 34);
 
       // Top divider
       ctx.beginPath();
-      ctx.setLineDash([6, 4]);
-      ctx.moveTo(12, top + 50);
-      ctx.lineTo(372, top + 50);
+      ctx.setLineDash([5, 4]);
+      ctx.moveTo(10, top + 48);
+      ctx.lineTo(374, top + 48);
       ctx.stroke();
 
       // Left aligned text
@@ -181,48 +181,48 @@
       ctx.setLineDash([]);
 
       ctx.font = 'bold 18px sans-serif';
-      ctx.fillText(`भाग सं.   : ${v["Part_Number"] || ''}`, 16, top + 80);
-      ctx.fillText(`क्रमांक    : ${v["Sr. No."] || ''}`, 16, top + 110);
+      ctx.fillText(`भाग सं.   : ${v["Part_Number"] || ''}`, 16, top + 76);
+      ctx.fillText(`क्रमांक    : ${v["Sr. No."] || ''}`, 16, top + 104);
 
       // Voter Name Hindi (Bold)
       ctx.font = 'bold 22px sans-serif';
-      ctx.fillText(`${v["Name_hi"] || ''}`, 16, top + 144);
+      ctx.fillText(`${v["Name_hi"] || ''}`, 16, top + 138);
 
       // Voter Name English
       ctx.font = '15px sans-serif';
-      ctx.fillText(`(${v["Name_en"] || ''})`, 16, top + 168);
+      ctx.fillText(`(${v["Name_en"] || ''})`, 16, top + 160);
 
-      // Family & House details
+      // Relative & House Details
       ctx.font = '17px sans-serif';
-      ctx.fillText(`${v["Relation_Type_hi"] || 'सम्बन्ध'}: ${v["Relative_Name_hi"] || ''}`, 16, top + 202);
-      ctx.fillText(`मकान नं. : ${v["House_hi"] || '-'}`, 16, top + 232);
-      ctx.fillText(`आयु/लिंग : ${v["Age"] || '-'} वर्ष / ${v["Gender_hi"] || '-'}`, 16, top + 262);
+      ctx.fillText(`${v["Relation_Type_hi"] || 'सम्बन्ध'}: ${v["Relative_Name_hi"] || ''}`, 16, top + 192);
+      ctx.fillText(`मकान नं. : ${v["House_hi"] || '-'}`, 16, top + 220);
+      ctx.fillText(`आयु/लिंग : ${v["Age"] || '-'} वर्ष / ${v["Gender_hi"] || '-'}`, 16, top + 248);
 
       // EPIC / Voter ID
       ctx.font = 'bold 18px sans-serif';
-      ctx.fillText(`EPIC नं. : ${v["EPIC No."] || '-'}`, 16, top + 296);
+      ctx.fillText(`EPIC नं. : ${v["EPIC No."] || '-'}`, 16, top + 280);
 
-      // Booth Info (Word wrapping for 2 lines)
+      // Booth Info
       ctx.font = '14px sans-serif';
       const booth = v["Polling_Booth_hi"] || '-';
-      ctx.fillText(`बूथ: ${booth.substring(0, 32)}`, 16, top + 330);
+      ctx.fillText(`बूथ: ${booth.substring(0, 32)}`, 16, top + 312);
       if (booth.length > 32) {
-        ctx.fillText(`${booth.substring(32, 68)}`, 16, top + 352);
+        ctx.fillText(`${booth.substring(32, 68)}`, 16, top + 334);
       }
 
       // Bottom separator
       ctx.beginPath();
-      ctx.setLineDash([6, 4]);
-      ctx.moveTo(12, top + 386);
-      ctx.lineTo(372, top + 386);
+      ctx.setLineDash([5, 4]);
+      ctx.moveTo(10, top + 364);
+      ctx.lineTo(374, top + 364);
       ctx.stroke();
 
       // Footer
       ctx.textAlign = 'center';
       ctx.font = 'bold 17px sans-serif';
-      ctx.fillText('मतदान अवश्य करें!', 192, top + 416);
+      ctx.fillText('मतदान अवश्य करें!', 192, top + 394);
 
-      // Separation cut line for batch items
+      // Cutting separator between batch items
       if (voterList.length > 1 && index < voterList.length - 1) {
         ctx.beginPath();
         ctx.setLineDash([3, 3]);
@@ -236,19 +236,23 @@
   }
 
   // =================================================================
-  // DIRECT PHONE INTENT ENGINE (NO TRUNCATION / NO CHINESE GARBAGE)
+  // DIRECT APP LAUNCHER (ZERO PLAY STORE REDIRECT GUARANTEED)
   // =================================================================
   function dispatchPrint(dataUrl) {
     const isAndroid = /android/i.test(navigator.userAgent);
 
     if (isAndroid) {
-      // Base64 PNG image stream direct to RawBT image parser
-      const cleanBase64 = dataUrl.replace(/^data:image\/png;base64,/, '');
-      const rawbtIntent = "intent:base64," + cleanBase64 + "#Intent;scheme=rawbt;type=image/png;package=ru.a402d.rawbtprinter;end;";
-      
-      window.location.href = rawbtIntent;
+      // Direct RawBT URI: Chrome cannot redirect to Play Store
+      const rawbtUri = "rawbt:" + dataUrl;
+
+      // Invisible link click trigger
+      const link = document.createElement('a');
+      link.href = rawbtUri;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     } else {
-      // Laptop standard preview window
+      // Laptop window preview test
       const win = window.open('');
       win.document.write(`
         <body style="margin:0; background:#f3f4f6; display:flex; justify-content:center; padding:20px;">
@@ -258,18 +262,16 @@
     }
   }
 
-  // Smart Print Button (Single or Multi Trigger)
+  // Smart Print Button Action
   function handleSmartPrint(uid, event) {
     event.stopPropagation();
 
     if (selectedVoters.size > 0) {
-      // Agar list bani hui hai toh us list ko print karein
       if (!selectedVoters.has(uid)) {
         selectedVoters.add(uid);
       }
       printSelectedBatch();
     } else {
-      // Sirf 1 voter print
       const v = voters.find(item => `${item["Part_Number"]}_${item["Sr. No."]}` === uid);
       if (!v) return alert("वोटर रिकॉर्ड नहीं मिला!");
       const slipImg = renderSlipToCanvas([v]);
@@ -277,7 +279,7 @@
     }
   }
 
-  // Multi-Print Execution & Auto-Deselect
+  // Batch Print & Auto-Deselect
   function printSelectedBatch() {
     if (selectedVoters.size === 0) return;
 
@@ -290,10 +292,10 @@
     const slipImg = renderSlipToCanvas(printList);
     dispatchPrint(slipImg);
 
-    // Print command bhejte hi pichle marked voters ko automatically uncheck karna
+    // Auto-clear selection so next search starts clean
     setTimeout(() => {
       clearAllSelections();
-    }, 800);
+    }, 1000);
   }
 
   // Comprehensive Search Handler
