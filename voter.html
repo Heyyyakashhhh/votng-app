@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="hi">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>वार्ड 24 - वोटर पर्ची एवं सर्च</title>
+
+  <!-- CSS aur JS ko link karna -->
+  <link rel="stylesheet" href="style.css">
+  <script src="data.js"></script>
+</head>
+
+<body>
+
+  <div class="sticky-top">
+    <div class="search-row">
+      <select id="partFilter" class="part-select" onchange="runSearch()">
+        <option value="ALL">सभी भाग</option>
+        <option value="1">भाग 1</option>
+        <option value="2">भाग 2</option>
+        <option value="3">भाग 3</option>
+        <option value="4">भाग 4</option>
+      </select>
+      <input type="text" id="searchBar" class="search-input" placeholder="नाम, पिता का नाम, क्रमांक या EPIC..."
+        onkeyup="runSearch()">
+    </div>
+    <div class="status-text" id="statusCount">डाटा लोड हो रहा है...</div>
+  </div>
+
+  <!-- Search results yahan render honge -->
+  <div id="resultContainer"></div>
+<div class="sticky-top" style="position:sticky; top:0; background:#f4f6f9; padding:8px 0; z-index:100;">
+  <div style="display:flex; gap:6px; margin-bottom:6px;">
+    <!-- Part Number Filter -->
+    <select id="partFilter" class="part-select" onchange="runSearch()" style="padding:10px; border-radius:8px; border:2px solid #007bff; font-weight:bold;">
+      <option value="ALL">सभी भाग</option>
+      <option value="1">भाग 1</option>
+      <option value="2">भाग 2</option>
+      <option value="3">भाग 3</option>
+      <option value="4">भाग 4</option>
+    </select>
+
+    <!-- Specific Search Category Filter -->
+    <select id="searchType" onchange="runSearch()" style="padding:10px; border-radius:8px; border:2px solid #007bff; font-weight:bold; background:white;">
+      <option value="ALL">🔍 सभी में खोजें</option>
+      <option value="REL">👤 पिता/पति के नाम से</option>
+      <option value="EPIC">🆔 EPIC / वोटर ID से</option>
+      <option value="NAME">📝 केवल वोटर के नाम से</option>
+    </select>
+  </div>
+
+  <div style="display:flex; gap:6px;">
+    <input 
+      type="text" 
+      id="searchBar" 
+      class="search-input" 
+      placeholder="यहाँ टाइप करें..." 
+      oninput="runSearch()"
+      style="flex:1; padding:12px; font-size:16px; border:2px solid #007bff; border-radius:8px; outline:none;"
+    >
+  </div>
+
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px; font-size:13px; font-weight:bold; color:#444;">
+    <span id="statusCount">डाटा तैयार है...</span>
+    <span id="selectedCountBadge" style="color:#007bff;"></span>
+  </div>
+
+  <!-- Bulk Print Button -->
+  <button 
+    id="bulkPrintBtn" 
+    type="button"
+    onclick="printSelectedBatch()" 
+    style="display:none; width:100%; background:#28a745; color:white; border:none; padding:12px; font-size:15px; font-weight:bold; border-radius:8px; margin-top:8px; cursor:pointer;">
+    🖨️ चयनित पर्चियां एक साथ प्रिंट करें
+  </button>
+</div>
+
+<div id="resultContainer"></div>
+<script>
+  let selectedVoters = new Set();
+
+  window.onload = function () {
+    if (typeof voters !== 'undefined' && Array.isArray(voters)) {
+      document.getElementById('statusCount').innerText = `कुल ${voters.length} वोटर्स तैयार हैं।`;
+    } else {
+      document.getElementById('statusCount').innerText = "⚠️ data.js नहीं मिला या लोड नहीं हुआ!";
+    }
+  };
+
+  // Card detail expand / collapse toggle
+  function toggleDetails(uid) {
+    const el = document.getElementById('details-' + uid);
+    const arrow = document.getElementById('arrow-' + uid);
+    if (!el) return;
+
+    if (el.style.display === 'block') {
+      el.style.display = 'none';
+      if (arrow) arrow.innerText = '▼ विवरण देखें';
+    } else {
+      el.style.display = 'block';
+      if (arrow) arrow.innerText = '▲ छुपाएं';
+    }
+  }
+
+  // Checkbox selection handler
+  function handleSelect(uid, event) {
+    event.stopPropagation();
+    const cb = event.target;
+    if (cb.checked) {
+      selectedVoters.add(uid);
+    } else {
+      selectedVoters.delete(uid);
+    }
+    updateBulkUI();
+  }
+
+  function updateBulkUI() {
+    const btn = document.getElementById('bulkPrintBtn');
+    const badge = document.getElementById('selectedCountBadge');
+    if (selectedVoters.size > 0) {
+      btn.style.display = 'block';
+      btn.innerText = `🖨️ चयनित (${selectedVoters.size}) पर्चियां एक साथ प्रिंट करें`;
+      badge.innerText = `चयनित: ${selectedVoters.size}`;
+    } else {
+      btn.style.display = 'none';
+      badge.innerText = '';
+    }
+  }
+
+  // 58mm (32 Column Exact Fit) Slip Template for Niyama BT-58
+  function makeSlipText(v) {
+    const line = "--------------------------------\n";
+    const title = "    वार्ड 24 - मतदाता पर्ची     \n";
+    return (
+      line +
+      title +
+      line +
+      "भाग सं.   : " + (v["Part_Number"] || "") + "\n" +
+      "क्रमांक    : " + (v["Sr. No."] || "") + "\n" +
+      "नाम       : " + (v["Name_hi"] || v["Name_en"] || "") + "\n" +
+      (v["Relation_Type_hi"] || "सम्बन्ध") + " : " + (v["Relative_Name_hi"] || v["Relative_Name_en"] || "") + "\n" +
+      "मकान नं.  : " + (v["House_hi"] || "") + "\n" +
+      "आयु/लिंग  : " + (v["Age"] || "") + " वर्ष / " + (v["Gender_hi"] || "") + "\n" +
+      "EPIC नं.  : " + (v["EPIC No."] || "") + "\n" +
+      "बूथ       : " + (v["Polling_Booth_hi"] || "") + "\n" +
+      line +
+      "    मतदान अवश्य करें!\n\n\n"
+    );
+  }
+
+  // Dispatch text to RawBT on Android or Browser Print on Laptop
+  function executePrint(plainText) {
+    const isAndroid = /android/i.test(navigator.userAgent);
+
+    if (isAndroid) {
+      const intentUri = "intent:data:text/plain;charset=utf-8," + encodeURIComponent(plainText) + 
+                        "#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;";
+      window.location.href = intentUri;
+    } else {
+      const printWin = window.open('', '', 'width=380,height=600');
+      printWin.document.write('<pre style="font-family:monospace; font-size:13px; white-space:pre-wrap; width:300px;">' + plainText + '</pre>');
+      printWin.document.close();
+      printWin.focus();
+      printWin.print();
+      printWin.close();
+    }
+  }
+
+  // Smart Print Button Action (Single OR Selected Multiple)
+  function handleSmartPrint(uid, event) {
+    event.stopPropagation();
+
+    // Agar user ne checkboxes select kiye hue hain
+    if (selectedVoters.size > 0) {
+      // Current card agar select nahi hai toh use bhi batch me add kar lo
+      if (!selectedVoters.has(uid)) {
+        selectedVoters.add(uid);
+        const cb = document.querySelector(`#card-${uid} input[type="checkbox"]`);
+        if (cb) cb.checked = true;
+        updateBulkUI();
+      }
+      printSelectedBatch();
+    } else {
+      // Agar koi checkbox nahi laga, toh normal single voter print nikalo
+      const v = voters.find(item => `${item["Part_Number"]}_${item["Sr. No."]}` === uid);
+      if (!v) return alert("वोटर नहीं मिला!");
+      executePrint(makeSlipText(v));
+    }
+  }
+
+  // Print all marked slips together
+  function printSelectedBatch() {
+    if (selectedVoters.size === 0) return;
+
+    let combined = "";
+    selectedVoters.forEach(uid => {
+      const v = voters.find(item => `${item["Part_Number"]}_${item["Sr. No."]}` === uid);
+      if (v) {
+        combined += makeSlipText(v);
+      }
+    });
+
+    executePrint(combined);
+  }
+
+  // Search Logic
+  function runSearch() {
+    const query = document.getElementById('searchBar').value.toLowerCase().trim();
+    const selectedPart = document.getElementById('partFilter').value;
+    const searchType = document.getElementById('searchType').value;
+    const container = document.getElementById('resultContainer');
+    const statusCount = document.getElementById('statusCount');
+    container.innerHTML = '';
+
+    if (!query && selectedPart === 'ALL') {
+      statusCount.innerText = `कुल ${voters.length} वोटर्स तैयार हैं।`;
+      return;
+    }
+
+    const results = voters.filter(v => {
+      if (selectedPart !== 'ALL' && String(v["Part_Number"]) !== selectedPart) {
+        return false;
+      }
+      if (!query) return true;
+
+      if (searchType === 'REL') {
+        return (
+          (v["Relative_Name_hi"] && v["Relative_Name_hi"].toLowerCase().includes(query)) ||
+          (v["Relative_Name_en"] && v["Relative_Name_en"].toLowerCase().includes(query))
+        );
+      } else if (searchType === 'EPIC') {
+        return (v["EPIC No."] && v["EPIC No."].toLowerCase().includes(query));
+      } else if (searchType === 'NAME') {
+        return (
+          (v["Name_hi"] && v["Name_hi"].toLowerCase().includes(query)) ||
+          (v["Name_en"] && v["Name_en"].toLowerCase().includes(query))
+        );
+      } else {
+        return (
+          (v["Name_hi"] && v["Name_hi"].toLowerCase().includes(query)) ||
+          (v["Name_en"] && v["Name_en"].toLowerCase().includes(query)) ||
+          (v["Relative_Name_hi"] && v["Relative_Name_hi"].toLowerCase().includes(query)) ||
+          (v["Relative_Name_en"] && v["Relative_Name_en"].toLowerCase().includes(query)) ||
+          (v["Sr. No."] && String(v["Sr. No."]) === query) ||
+          (v["House_hi"] && String(v["House_hi"]).toLowerCase() === query) ||
+          (v["EPIC No."] && v["EPIC No."].toLowerCase().includes(query))
+        );
+      }
+    });
+
+    statusCount.innerText = `परिणाम मिले: ${results.length}`;
+
+    results.slice(0, 50).forEach(v => {
+      const uid = `${v["Part_Number"]}_${v["Sr. No."]}`;
+      const isChecked = selectedVoters.has(uid);
+
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.id = `card-${uid}`;
+      card.style.cssText = "background:white; border:1px solid #dcdfe6; border-radius:10px; margin-bottom:10px; box-shadow:0 1px 3px rgba(0,0,0,0.06); overflow:hidden;";
+
+      card.innerHTML = `
+        <div style="display:flex; align-items:center; gap:10px; padding:12px;">
+          <!-- Multi Select Checkbox -->
+          <input 
+            type="checkbox" 
+            style="width:22px; height:22px; accent-color:#007bff; cursor:pointer;" 
+            ${isChecked ? 'checked' : ''} 
+            onclick="handleSelect('${uid}', event)"
+          >
+
+          <!-- Voter Overview -->
+          <div onclick="toggleDetails('${uid}')" style="flex:1; cursor:pointer;">
+            <div style="font-size:16px; font-weight:bold; color:#111;">
+              ${v["Name_hi"]} <span style="font-size:13px; font-weight:normal; color:#666;">(${v["Name_en"] || ''})</span>
+            </div>
+            <div style="font-size:14px; color:#333; margin-top:2px;">
+              👤 ${v["Relation_Type_hi"] || 'पिता/पति'}: <b>${v["Relative_Name_hi"]}</b> 
+              <span style="font-size:12px; color:#666;">(${v["Relative_Name_en"] || ''})</span>
+            </div>
+            <div style="display:flex; gap:6px; margin-top:5px; font-size:12px; font-weight:bold;">
+              <span style="background:#e0f2fe; color:#0369a1; padding:2px 6px; border-radius:4px;">भाग: ${v["Part_Number"]}</span>
+              <span style="background:#fef3c7; color:#b45309; padding:2px 6px; border-radius:4px;">क्रमांक: ${v["Sr. No."]}</span>
+              <span style="background:#f1f5f9; color:#475569; padding:2px 6px; border-radius:4px;">🏠 ${v["House_hi"] || '-'}</span>
+              <span id="arrow-${uid}" style="color:#007bff; margin-left:auto;">▼ विवरण देखें</span>
+            </div>
+          </div>
+
+          <!-- Smart Print Button -->
+          <div>
+            <button 
+              type="button" 
+              onclick="handleSmartPrint('${uid}', event)"
+              style="background:#007bff; color:white; border:none; padding:10px 14px; font-size:14px; font-weight:bold; border-radius:8px; cursor:pointer; white-space:nowrap;">
+              🖨️ प्रिंट
+            </button>
+          </div>
+        </div>
+
+        <!-- Hidden Detail Drawer -->
+        <div id="details-${uid}" style="display:none; padding:12px; border-top:1px dashed #ddd; background:#fafafa; font-size:13px; line-height:1.6; color:#333;">
+          <div><b>🆔 EPIC / वोटर ID:</b> <span style="color:#007bff; font-weight:bold;">${v["EPIC No."] || '-'}</span></div>
+          <div><b>🏠 मकान सं:</b> ${v["House_hi"] || '-'} | <b>आयु:</b> ${v["Age"] || '-'} वर्ष | <b>लिंग:</b> ${v["Gender_hi"] || '-'}</div>
+          <div><b>🏫 मतदान केंद्र:</b> ${v["Polling_Booth_hi"] || '-'}</div>
+        </div>
+      `;
+      container.appendChild(card);
+    });
+  }
+</script>
+</body>
+
+</html>
