@@ -413,6 +413,9 @@
               <span style="background:#e0f2fe; color:#0369a1; padding:2px 6px; border-radius:4px;">भाग: ${v["Part_Number"]}</span>
               <span style="background:#fef3c7; color:#b45309; padding:2px 6px; border-radius:4px;">क्रमांक: ${v["Sr. No."]}</span>
               <span style="background:#f1f5f9; color:#475569; padding:2px 6px; border-radius:4px;">🏠 ${v["House_hi"] || '-'}</span>
+              <span style="background:${v["Status"] === "ACTIVE" ? "#4F7942" : "Red"}; color:${v["Status"] === "ACTIVE" ? "white" : "white"}; padding:2px 6px; border-radius:4px; font-weight:bold;">
+  ${v["Status"] || 'N/A'}
+</span>
               <span id="arrow-${uid}" style="color:#007bff; margin-left:auto;">▼ विवरण देखें</span>
             </div>
           </div>
