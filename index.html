@@ -144,92 +144,138 @@
   }
 
   // =================================================================
-  // 58mm COMPACT CANVAS BITMAP (CRISP HINDI + FAST MOBILE LOAD)
+  // 58mm HIGH-DEFINITION CANVAS BITMAP (BIG FONTS + ZERO CUTTING)
   // =================================================================
   function renderSlipToCanvas(voterList) {
-    const slipHeight = 460;
+    // Multi-line wrapper for long booth addresses
+    function getWrappedLines(context, text, maxWidth) {
+      if (!text) return ['-'];
+      const words = text.split(' ');
+      const lines = [];
+      let currentLine = '';
+
+      for (let n = 0; n < words.length; n++) {
+        const testLine = currentLine ? (currentLine + ' ' + words[n]) : words[n];
+        const metrics = context.measureText(testLine);
+        if (metrics.width > maxWidth && n > 0) {
+          lines.push(currentLine);
+          currentLine = words[n];
+        } else {
+          currentLine = testLine;
+        }
+      }
+      if (currentLine) lines.push(currentLine);
+      return lines;
+    }
+
+    // Dynamic height measurement per slip
+    const measureCanvas = document.createElement('canvas');
+    const mCtx = measureCanvas.getContext('2d');
+    measureCanvas.width = 384;
+    mCtx.font = 'bold 18px sans-serif';
+
+    const calculatedHeights = voterList.map(v => {
+      const boothLines = getWrappedLines(mCtx, v["Polling_Booth_hi"] || '-', 348);
+      // Base layout height + wrapped booth lines + 100px bottom tear margin
+      return 470 + (boothLines.length * 28) + 100;
+    });
+
+    const totalCanvasHeight = calculatedHeights.reduce((acc, h) => acc + h, 0);
+
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
-
-    // 58mm width = 384 pixels
     canvas.width = 384;
-    canvas.height = slipHeight * voterList.length;
+    canvas.height = totalCanvasHeight;
 
-    // Pure crisp white background
+    // Crisp white background
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+    let currentY = 0;
+
     voterList.forEach((v, index) => {
-      const top = index * slipHeight;
+      const top = currentY;
+      const thisHeight = calculatedHeights[index];
 
       ctx.fillStyle = '#000000';
       ctx.textAlign = 'center';
 
-      // Header
-      ctx.font = 'bold 22px sans-serif';
-      ctx.fillText('वार्ड 24 - मतदाता पर्ची', 192, top + 34);
+      // Header Title
+      ctx.font = 'bold 24px sans-serif';
+      ctx.fillText('वार्ड 24 - मतदाता पर्ची', 192, top + 38);
 
       // Top divider
       ctx.beginPath();
-      ctx.setLineDash([5, 4]);
-      ctx.moveTo(10, top + 48);
-      ctx.lineTo(374, top + 48);
+      ctx.setLineDash([6, 4]);
+      ctx.lineWidth = 2;
+      ctx.moveTo(12, top + 52);
+      ctx.lineTo(372, top + 52);
       ctx.stroke();
 
       // Left aligned text
       ctx.textAlign = 'left';
       ctx.setLineDash([]);
+      ctx.lineWidth = 1;
 
-      ctx.font = 'bold 18px sans-serif';
-      ctx.fillText(`भाग सं.   : ${v["Part_Number"] || ''}`, 16, top + 76);
-      ctx.fillText(`क्रमांक    : ${v["Sr. No."] || ''}`, 16, top + 104);
+      // Part & Serial Number (Big & Bold)
+      ctx.font = 'bold 24px sans-serif';
+      ctx.fillText(`भाग सं.   : ${v["Part_Number"] || ''}`, 16, top + 86);
+      ctx.fillText(`क्रमांक    : ${v["Sr. No."] || ''}`, 16, top + 118);
 
-      // Voter Name Hindi (Bold)
-      ctx.font = 'bold 22px sans-serif';
-      ctx.fillText(`${v["Name_hi"] || ''}`, 16, top + 138);
+      // Voter Name Hindi (Extra Large Bold)
+      ctx.font = 'bold 28px sans-serif';
+      ctx.fillText(`${v["Name_hi"] || ''}`, 16, top + 158);
 
       // Voter Name English
-      ctx.font = '15px sans-serif';
-      ctx.fillText(`(${v["Name_en"] || ''})`, 16, top + 160);
-
-      // Relative & House Details
-      ctx.font = '17px sans-serif';
-      ctx.fillText(`${v["Relation_Type_hi"] || 'सम्बन्ध'}: ${v["Relative_Name_hi"] || ''}`, 16, top + 192);
-      ctx.fillText(`मकान नं. : ${v["House_hi"] || '-'}`, 16, top + 220);
-      ctx.fillText(`आयु/लिंग : ${v["Age"] || '-'} वर्ष / ${v["Gender_hi"] || '-'}`, 16, top + 248);
-
-      // EPIC / Voter ID
       ctx.font = 'bold 18px sans-serif';
-      ctx.fillText(`EPIC नं. : ${v["EPIC No."] || '-'}`, 16, top + 280);
+      ctx.fillText(`(${v["Name_en"] || ''})`, 16, top + 186);
 
-      // Booth Info
-      ctx.font = '14px sans-serif';
-      const booth = v["Polling_Booth_hi"] || '-';
-      ctx.fillText(`बूथ: ${booth.substring(0, 32)}`, 16, top + 312);
-      if (booth.length > 32) {
-        ctx.fillText(`${booth.substring(32, 68)}`, 16, top + 334);
-      }
+      // Relative Info & House No
+      ctx.font = 'bold 20px sans-serif';
+      ctx.fillText(`${v["Relation_Type_hi"] || 'सम्बन्ध'}: ${v["Relative_Name_hi"] || ''}`, 16, top + 222);
+      ctx.fillText(`मकान नं. : ${v["House_hi"] || '-'}`, 16, top + 254);
+      ctx.fillText(`आयु/लिंग : ${v["Age"] || '-'} वर्ष / ${v["Gender_hi"] || '-'}`, 16, top + 286);
 
-      // Bottom separator
+      // EPIC / Voter ID (Prominent)
+      ctx.font = 'bold 24px sans-serif';
+      ctx.fillText(`EPIC नं. : ${v["EPIC No."] || '-'}`, 16, top + 322);
+
+      // Booth Address Section
+      ctx.font = 'bold 18px sans-serif';
+      ctx.fillText('मतदान केंद्र:', 16, top + 356);
+
+      const boothLines = getWrappedLines(ctx, v["Polling_Booth_hi"] || '-', 348);
+      let boothY = top + 384;
+      boothLines.forEach(line => {
+        ctx.fillText(line, 16, boothY);
+        boothY += 26;
+      });
+
+      // Bottom separator line
+      const bottomLineY = boothY + 12;
       ctx.beginPath();
-      ctx.setLineDash([5, 4]);
-      ctx.moveTo(10, top + 364);
-      ctx.lineTo(374, top + 364);
+      ctx.setLineDash([6, 4]);
+      ctx.lineWidth = 2;
+      ctx.moveTo(12, bottomLineY);
+      ctx.lineTo(372, bottomLineY);
       ctx.stroke();
 
-      // Footer
+      // Footer Message
       ctx.textAlign = 'center';
-      ctx.font = 'bold 17px sans-serif';
-      ctx.fillText('मतदान अवश्य करें!', 192, top + 394);
+      ctx.font = 'bold 22px sans-serif';
+      ctx.fillText('मतदान अवश्य करें!', 192, bottomLineY + 36);
 
-      // Cutting separator between batch items
+      // Multi-voter cut guide line
       if (voterList.length > 1 && index < voterList.length - 1) {
         ctx.beginPath();
         ctx.setLineDash([3, 3]);
-        ctx.moveTo(0, top + slipHeight - 2);
-        ctx.lineTo(384, top + slipHeight - 2);
+        ctx.lineWidth = 1;
+        ctx.moveTo(0, top + thisHeight - 4);
+        ctx.lineTo(384, top + thisHeight - 4);
         ctx.stroke();
       }
+
+      currentY += thisHeight;
     });
 
     return canvas.toDataURL('image/png');
@@ -242,17 +288,13 @@
     const isAndroid = /android/i.test(navigator.userAgent);
 
     if (isAndroid) {
-      // Direct RawBT URI: Chrome cannot redirect to Play Store
       const rawbtUri = "rawbt:" + dataUrl;
-
-      // Invisible link click trigger
       const link = document.createElement('a');
       link.href = rawbtUri;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
     } else {
-      // Laptop window preview test
       const win = window.open('');
       win.document.write(`
         <body style="margin:0; background:#f3f4f6; display:flex; justify-content:center; padding:20px;">
@@ -292,7 +334,6 @@
     const slipImg = renderSlipToCanvas(printList);
     dispatchPrint(slipImg);
 
-    // Auto-clear selection so next search starts clean
     setTimeout(() => {
       clearAllSelections();
     }, 1000);
